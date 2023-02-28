@@ -1,0 +1,114 @@
+////////Mapa da precipitação pluvial média mensal do período//////
+
+
+// Área de estudo 
+var roi = ee.FeatureCollection('users/jakelinebarattogeo/SCCI')
+
+
+//Período 
+var startyear = 1982;
+var endyear = 2022;
+
+// CRIAR LISTA PARA VARIÁVEL YEARS
+var years = ee.List.sequence(startyear,endyear);
+ 
+// CRIAR LISTA DE MESES PARA UTILIZAR NAS FUNÇÕES 
+var months = ee.List.sequence(1,12);
+ 
+// DEFINIR INÍCIO E FIM 
+var startdate = ee.Date.fromYMD(startyear,1,1);
+var enddate = ee.Date.fromYMD(endyear,12,31);
+
+////////Coleção de imagens/////
+var precipitation = ee.ImageCollection("UCSB-CHG/CHIRPS/DAILY")
+                    .select('precipitation')
+                    .filterDate(startdate, enddate)
+                    .filterBounds(roi);
+
+
+///CALCULO DA PRECIPITAÇÃO ANUAL/
+
+var precipitacao_mensal_acum =  ee.ImageCollection.fromImages(
+    
+    years.map(function (y) { //função ano
+    return months.map(function(m) {//função mês aninhada em ano
+    //Defina a variável precipitação 
+      var precipitation_month = precipitation.filter(ee.Filter.calendarRange(y, y, 'year'))//Filtro de ano
+                    .filter(ee.Filter.calendarRange(m,m, 'month'))//Filtro de mês
+                    .sum() //acumulando os dados
+                    .clip(roi);//Recortando pela área de estudo
+                    
+      return precipitation_month.set('year', y)//Encerrando a função mês
+              .set('month', m) //inserir Mês
+              .set('system:time_start', ee.Date.fromYMD(y, m, 1));//Definindo Data Ano.Mês e Dia
+                        
+    });
+  }).flatten() //empilha a coleção ano a ano, mês a mês
+              //Nivela coleções de coleções.
+);
+
+
+//////Precipitação Média Acumulada mensal/
+var precipitacao_mensal_acum_mean =  ee.ImageCollection.fromImages(
+  
+  months.map(function (m) {
+                             //Usa a coleção mensal acumulada
+    var precipitation_month = precipitacao_mensal_acum.filter(ee.Filter.eq('month', 10))/// Selecionar o mês desejado
+    .mean()
+    .clip(roi);
+    
+    return precipitation_month
+            .set('month', m)
+            .set('system:time_start',ee.Date.fromYMD(1, m, 1)); 
+  }).flatten()
+);
+
+//// Geração do gráfico verificar se o mês foi selecionado certo
+
+var chartMonthly = ui.Chart.image.seriesByRegion({
+  imageCollection: precipitacao_mensal_acum_mean, 
+  regions: roi,
+  reducer: ee.Reducer.mean(),
+  band: 'precipitation',
+  scale: 2500,
+  xProperty: 'month',
+  seriesProperty: 'NOME'
+}).setOptions({
+      title: 'Precipitação média mensal',
+      hAxis: {title: 'Intervalo de tempo'},
+      vAxis: {title: 'P (mm)'},
+      lineWidth: 1,
+      pointSize: 5,
+      pointShape: 'square',
+      series: {
+         0:  {color: 'blue'},
+          1: {color: 'DeepSkyBlue'},
+          2: {color: 'SteelBlue'},
+           3: {color: 'Green'}
+          }}
+      )
+  .setChartType('ColumnChart');
+
+print(chartMonthly);
+
+
+/// Parâmetros para visualização do mapa 
+var Vis = {opacity:1,
+            bands:["precipitation"],
+            min:49,
+            max:156,
+            palette:['red','orange','yellow','green','cyan','blue','darkblue']};
+
+
+
+Map.addLayer(precipitacao_mensal_acum, Vis, 'Precipitação Média Mensal CHIRPS',1);
+
+
+Export.image.toDrive({
+image: precipitacao_mensal_acum.select('precipitation').reduce(ee.Reducer.mean()) ,
+folder: 'Precipitacao',
+description: 'Pmensal',
+region: roi,
+scale: 2500,
+maxPixels: 1e13
+}) 
