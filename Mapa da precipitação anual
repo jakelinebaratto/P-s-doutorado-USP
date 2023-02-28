@@ -1,0 +1,64 @@
+///Mapa da precipitação pluvial média anual 
+
+
+// Área de estudo 
+var roi = ee.FeatureCollection('users/jakelinebarattogeo/SCCI')
+
+
+//Período 
+var startyear = 1982;
+var endyear = 2022;
+
+// CRIAR LISTA PARA VARIÁVEL YEARS
+var years = ee.List.sequence(startyear,endyear);
+ 
+// CRIAR LISTA DE MESES PARA UTILIZAR NAS FUNÇÕES 
+var months = ee.List.sequence(1,12);
+ 
+// DEFINIR INÍCIO E FIM 
+var startdate = ee.Date.fromYMD(startyear,1,1);
+var enddate = ee.Date.fromYMD(endyear,12,31);
+
+////////Coleção de imagens/////
+var precipitation = ee.ImageCollection("UCSB-CHG/CHIRPS/DAILY")
+                    .select('precipitation')
+                    .filterDate(startdate, enddate)
+                    .filterBounds(roi);
+
+
+///CALCULO DA PRECIPITAÇÃO ANUAL/
+
+var precipitacao_anual_acum = ee.ImageCollection.fromImages(//Retorna a coleção de imagens contendo as imagens fornecidas.
+    years.map(function (year) {
+    
+    var anual = precipitation.filter(ee.Filter.calendarRange(year, year, 'year'))
+        .sum() // acumula os dados anuais 
+        .clip(roi); //recorte para área de estudo
+    return anual
+        .set('year', year)
+        .set('system:time_start', ee.Date.fromYMD(year, 1, 1))//apenas para termos uma data
+        ;
+}));
+
+print('1 - Coleção de imagens CHIRPS anual',precipitacao_anual_acum )
+
+
+///Adiconando Layers////
+
+var VisAnual = {opacity:1,
+            bands:["precipitation"],
+            min:1000,
+            max:4000,
+            palette:['cyan','darkblue','orange','Magenta','DarkMagenta','DeepPink']};
+
+Map.addLayer(precipitacao_anual_acum, VisAnual, 'Precipitação Anual CHIRPS',1);
+
+///Exportando a imagem da precipitação anual 
+Export.image.toDrive({
+image: precipitacao_anual_acum.select('precipitation').reduce(ee.Reducer.mean()) ,
+folder: 'Precipitacao',
+description: 'Panual',
+region: roi,
+scale: 2500,
+maxPixels: 1e13
+}) 
