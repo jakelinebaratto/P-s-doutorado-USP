@@ -14,8 +14,8 @@ print(roi)
 
 Map.addLayer(roi)
 
-var startyear = 2002;
-var endyear = 2022;
+var startyear = 2008;
+var endyear = 2019;
 
 // CRIAR LISTA PARA VARIÁVEL YEARS
 var years = ee.List.sequence(startyear,endyear);
