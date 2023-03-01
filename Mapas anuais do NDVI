@@ -1,0 +1,65 @@
+
+/// Mapas do NDVI anual 
+/// sse script foi adapdato de Christhian Santana Cunha para a área de estudo///
+
+/// Área de estudo 
+var roi = ee.FeatureCollection ('users/jakelinebarattogeo/SCCI')
+
+
+// parametros para a visualização dos mapas      
+var VisAnual = {opacity:1,
+            bands:["ndvi"],
+            min: -1,
+            max: 1,
+            palette:['red','orange','yellow','green']};
+
+/********************************Exportando Imagens em Loop***********************
+//Neste tópico vamos ver como exportar a coleção de imagens ano a ano          -
+//*********************************************************************************/
+var years=ee.List.sequence(2003,2022).getInfo(); // Defina a lista de ano
+var month = ee.List.sequence(1,12).getInfo(); //Defina a lista de mês
+
+var serie_temporal = years.map(loop);//função para uma lista
+                    
+function loop(year){
+                                    
+        var startdate = ee.Date.fromYMD(year, 1, 1)
+        var enddate = ee.Date.fromYMD(year, 12, 31)
+
+/*****************************************Coleção*********************************/
+var ndvi = ee.ImageCollection("MODIS/061/MYD13Q1")
+              .select("NDVI")
+              .filterDate(startdate,enddate)
+              .filterBounds(roi)
+
+// fator de escala 
+
+var fator = 0.0001
+
+function aplicarFator (imagem) {
+  return imagem.multiply(fator)
+  .copyProperties(imagem, imagem.propertyNames())
+}
+
+var ndvi2 = ndvi.map(aplicarFator)
+
+print(ndvi2)
+
+                
+var ndvi_media =  ndvi2.reduce(ee.Reducer.mean()) //precipitation_sum
+/*rename substituir o precipitatio_sum*/.rename('ndvi') 
+                                        .clip(roi)
+      
+
+/**************************Adicionado Mapa de Precipitação por ano***********/
+Map.addLayer(ndvi_media, VisAnual, 'NDVI'.concat(year),0);    
+/********************************Exportando Imagens Anual***********************/
+Export.image.toDrive({
+  image: ndvi_media,
+  folder: 'PDJ',
+  description: 'NDVI'.concat(year),
+  region: roi,
+  scale: 250,
+  maxPixels: 1e13
+  })   
+} //Fim da função Loop
