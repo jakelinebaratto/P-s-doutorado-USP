@@ -1,0 +1,147 @@
+/// NDVI médio mensal e anual para o SCCI
+
+
+var roi = ee.FeatureCollection ('users/jakelinebarattogeo/SCCI')
+
+Map.centerObject(roi)
+print(roi)
+
+Map.addLayer(roi)
+
+// Período de análise
+var startyear = 2017;
+var endyear = 2022;
+
+// CRIAR LISTA PARA VARIÁVEL YEARS
+var years = ee.List.sequence(startyear,endyear);
+ 
+// CRIAR LISTA DE MESES PARA UTILIZAR NAS FUNÇÕES 
+var months = ee.List.sequence(1,12);
+ 
+// DEFINIR INÍCIO E FIM 
+var startdate = ee.Date.fromYMD(startyear,1,1);
+var enddate = ee.Date.fromYMD(endyear,12,31);
+
+
+//COLEÇÃO DE IMAGEM 
+
+//Indices de vegetação - 250 m
+
+var ndvi = ee.ImageCollection("MODIS/061/MYD13Q1") 
+              .select("NDVI")
+              .filterDate(startdate,enddate)
+              .filterBounds(roi)
+
+///indice de vegetação - 1 km
+//var ndvi = ee.ImageCollection("MODIS/061/MOD13A2")
+             // .select("NDVI")
+              //.filterDate(startdate,enddate)
+              //.filterBounds(roi)
+ 
+// fator de escala 
+
+var fator = 0.0001
+
+function aplicarFator (imagem) {
+  return imagem.multiply(fator)
+  .copyProperties(imagem, imagem.propertyNames())
+}
+
+ndvi = ndvi.map(aplicarFator)
+
+print(ndvi)
+
+
+// CALCULO DO NDVI MENSAL -
+
+var ndvi_mensal_media =  ee.ImageCollection.fromImages( 
+    
+    years.map(function (y) { //função ano
+    return months.map(function(m) {//função mês aninhada em ano
+    //Defina a variável DNVI 
+      var ndvi_month = ndvi.filter(ee.Filter.calendarRange(y, y, 'year'))//Filtro de ano
+                    .filter(ee.Filter.calendarRange(m, m, 'month'))//Filtro de mês
+                    .mean() //acumulando os dados
+                    .clip(roi);//Recortando pela área de estudo
+                    
+      return ndvi_month.set('year', y)//Encerrando a função mês
+              .set('month', m) //inserir Mês
+              .set('system:time_start', ee.Date.fromYMD(y, m, 1));//Definindo Data Ano.Mês e Dia
+                        
+    });
+  }).flatten() //empilha a coleção ano a ano, mês a mês
+              //Nivela coleções de coleções.
+);
+
+/// gráfico do NDVI médio mensal da área de estudo 
+
+var chartP = ui.Chart.image.seriesByRegion({
+    imageCollection: ndvi_mensal_media ,//Coleção mensal 
+    regions: roi, 
+    reducer: ee.Reducer.mean(), 
+    band: 'NDVI', 
+    scale: 1000, 
+    xProperty: 'system:time_start', 
+    seriesProperty: 'NOME'})
+    .setOptions({
+      hAxis: {title: 'Intervalo de tempo'},
+      vAxis: {title: 'NDVI'},
+      lineWidth: 1,
+      pointSize: 5,
+      pointShape: 'square',
+      series: {
+          0:  {pointShape: 'circle',color: 'black'},
+          1: { pointShape: 'triangle', rotation: 180, color: 'DeepSkblack'},
+          2: {pointShape: 'square' , color: 'Steelblack'},
+           3: {pointShape: 'square' , color: 'Green'}
+          }}
+      )
+    .setChartType('ScatterChart');  
+    
+    print(chartP)
+    
+    
+  
+  ///NDVI médio anual
+
+var ndvi_anual = ee.ImageCollection.fromImages(//Retorna a coleção de imagens contendo as imagens fornecidas.
+    years.map(function (year) {
+    
+    var anual = ndvi.filter(ee.Filter.calendarRange(year, year, 'year'))
+        .mean() // acumula os dados anuais 
+        .clip(roi); //recorte para área de estudo
+    return anual
+        .set('year', year)
+        .set('system:time_start', ee.Date.fromYMD(year, 1, 1))//apenas para termos uma data
+        ;
+}));
+
+print('2 - NDVI anual', ndvi_anual)
+
+  
+ /// gráfico do NDVI médio anual da área de estudo 
+
+var chartP = ui.Chart.image.seriesByRegion({
+    imageCollection: ndvi_anual,//Coleção mensal 
+    regions: roi, 
+    reducer: ee.Reducer.mean(), 
+    band: 'NDVI', 
+    scale: 1000, 
+    xProperty: 'system:time_start', 
+    seriesProperty: 'NOME'})
+    .setOptions({
+      hAxis: {title: 'Intervalo de tempo'},
+      vAxis: {title: 'NDVI'},
+      lineWidth: 1,
+      pointSize: 5,
+      pointShape: 'square',
+      series: {
+          0:  {pointShape: 'circle',color: 'black'},
+          1: { pointShape: 'triangle', rotation: 180, color: 'DeepSkblack'},
+          2: {pointShape: 'square' , color: 'Steelblack'},
+           3: {pointShape: 'square' , color: 'Green'}
+          }}
+      )
+    .setChartType('ScatterChart');  
+    
+    print(chartP)   
