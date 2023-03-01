@@ -1,0 +1,166 @@
+
+///Dados de precipitação pluvial e NDVI para pontos específicos////
+/// Esse script foi adapdato de Christhian Santana Cunha para a área de estudo///
+
+/// CALCULAR O PRECI PARA OS PONTOS SELECIONADOS
+
+//ÁREA DE ESTUDO 
+ 
+var roi = ee.FeatureCollection ('users/jakelinebarattogeo/SCCI')
+
+
+//print(roi) 
+
+Map.centerObject(roi)
+Map.addLayer(roi)
+
+// Período 
+var startyear = 2003;
+var endyear = 2022;
+
+// CRIAR LISTA PARA VARIÁVEL YEARS
+var years = ee.List.sequence(startyear,endyear);
+ 
+// CRIAR LISTA DE MESES PARA UTILIZAR NAS FUNÇÕES 
+var months = ee.List.sequence(1,12);
+ 
+// DEFINIR INÍCIO E FIM 
+var startdate = ee.Date.fromYMD(startyear,1,1);
+var enddate = ee.Date.fromYMD(endyear,12,31);
+
+// DEFINIÇÃO DA ÁREA DE ESTUDO 
+
+
+////////////////////////////COLEÇÃO DE IMAGEM PARA PRECIPITAÇÃO - SATÉLITE CHIRPS/////
+var precipitation = ee.ImageCollection("UCSB-CHG/CHIRPS/DAILY")
+                    .select('precipitation')
+                    .filterDate(startdate, enddate)
+                    .filterBounds(roi)
+ 
+var precipitacao_mensal_acum =  ee.ImageCollection.fromImages(
+    
+    years.map(function (y) { //função ano
+    return months.map(function(m) {//função mês aninhada em ano
+    //Defina a variável precipitação 
+      var precipitation_month = precipitation.filter(ee.Filter.calendarRange(y, y, 'year'))//Filtro de ano
+                    .filter(ee.Filter.calendarRange(m, m, 'month'))//Filtro de mês
+                    .sum() //acumulando os dados
+                    .clip(roi);//Recortando pela área de estudo
+                    
+      return precipitation_month.set('year', y)//Encerrando a função mês
+              .set('month', m) //inserir Mês
+              .set('system:time_start', ee.Date.fromYMD(y, m, 1));//Definindo Data Ano.Mês e Dia
+                        
+    });
+  }).flatten() //empilha a coleção ano a ano, mês a mês
+              //Nivela coleções de coleções.
+);
+
+/// GRÁFICOS PARA COLETAR DADOS DOS PONTOS SELECIONADOS//////
+
+ var grafico = ui.Chart.image.series({
+  imageCollection: precipitacao_mensal_acum, 
+   region: P1,
+  reducer: ee.Reducer.mean(), 
+  scale: 250, 
+   xProperty: 'system:time_start'
+ })
+
+ print(grafico,'PONTO 1 - PRECIPITAÇÃO');
+
+
+ var grafico2 = ui.Chart.image.series({
+  imageCollection: precipitacao_mensal_acum, 
+   region: P2,
+  reducer: ee.Reducer.mean(), 
+  scale: 250, 
+   xProperty: 'system:time_start'
+ })
+
+ print(grafico2,'PONTO 2 - PRECIPITAÇÃO');
+
+ var grafico3 = ui.Chart.image.series({
+  imageCollection: precipitacao_mensal_acum, 
+   region: P3,
+  reducer: ee.Reducer.mean(), 
+  scale: 250, 
+   xProperty: 'system:time_start'
+ })
+
+ print(grafico3,'PONTO 3 - PRECIPITAÇÃO');
+
+//////DADOS DO NDVI PARA OS PONTOS SELECIONADOS 
+
+//Indices de vegetação - 250 m
+
+var ndvi = ee.ImageCollection("MODIS/061/MYD13Q1") 
+              .select("NDVI")
+              .filterDate(startdate,enddate)
+              .filterBounds(roi)
+
+// fator de escala 
+
+var fator = 0.0001
+
+function aplicarFator (imagem) {
+  return imagem.multiply(fator)
+  .copyProperties(imagem, imagem.propertyNames())
+}
+
+ndvi = ndvi.map(aplicarFator)
+
+//print(ndvi)
+
+
+// CALCULO DO NDVI MENSAL -
+
+var ndvi_mensal_media =  ee.ImageCollection.fromImages( 
+    
+    years.map(function (y) { //função ano
+    return months.map(function(m) {//função mês aninhada em ano
+    //Defina a variável precipitação 
+      var ndvi_month = ndvi.filter(ee.Filter.calendarRange(y, y, 'year'))//Filtro de ano
+                    .filter(ee.Filter.calendarRange(m, m, 'month'))//Filtro de mês
+                    .mean() //acumulando os dados
+                    .clip(roi);//Recortando pela área de estudo
+                    
+      return ndvi_month.set('year', y)//Encerrando a função mês
+              .set('month', m) //inserir Mês
+              .set('system:time_start', ee.Date.fromYMD(y, m, 1));//Definindo Data Ano.Mês e Dia
+                        
+    });
+  }).flatten() //empilha a coleção ano a ano, mês a mês
+              //Nivela coleções de coleções.
+);
+
+/// GRÁFICOS PARA COLETAR DADOS DOS PONTOS SELECIONADOS//////
+ var grafico = ui.Chart.image.series({
+  imageCollection: ndvi_mensal_media, 
+   region: P1,
+  reducer: ee.Reducer.mean(), 
+  scale: 250, 
+   xProperty: 'system:time_start'
+ })
+
+ print(grafico,'PONTO 1 - NDVI');
+
+
+ var grafico2 = ui.Chart.image.series({
+  imageCollection: ndvi_mensal_media, 
+   region: P2,
+  reducer: ee.Reducer.mean(), 
+  scale: 250, 
+   xProperty: 'system:time_start'
+ })
+
+ print(grafico2,'PONTO 2 - NDVI');
+
+ var grafico3 = ui.Chart.image.series({
+  imageCollection:ndvi_mensal_media, 
+   region: P3,
+  reducer: ee.Reducer.mean(), 
+  scale: 250, 
+   xProperty: 'system:time_start'
+ })
+
+ print(grafico3,'PONTO 3 - NDVI');
