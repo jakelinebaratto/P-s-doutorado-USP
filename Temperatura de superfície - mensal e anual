@@ -1,6 +1,6 @@
 /// Temperatura de superfície para o SCCI
-//Em função do limile de menória, os dados precisam ser baixados de curtos espaços de tempo. 
-/// sse script foi adapdato de Christhian Santana Cunha para a área de estudo///
+//Em função do limile de menória, os dados precisam ser baixados em período menores separadamente. 
+/// Esse script foi adapdato de Christhian Santana Cunha para a área de estudo///
 
 //Área de estudo
 
