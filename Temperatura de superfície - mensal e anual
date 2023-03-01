@@ -1,0 +1,144 @@
+/// Temperatura de superfície para o SCCI
+//Em função do limile de menória, os dados precisam ser baixados de curtos espaços de tempo. 
+/// sse script foi adapdato de Christhian Santana Cunha para a área de estudo///
+
+//Área de estudo
+
+var roi = ee.FeatureCollection('users/jakelinebarattogeo/SCCI')
+
+// SELECIONAR O PERÍODO 
+
+var startyear = 2003;
+var endyear = 2022;
+
+// CRIAR LISTA PARA VARIÁVEL YEARS
+var years = ee.List.sequence(startyear,endyear);
+ 
+// CRIAR LISTA DE MESES PARA UTILIZAR NAS FUNÇÕES 
+var months = ee.List.sequence(1,12);
+ 
+// DEFINIR INÍCIO E FIM 
+var startdate = ee.Date.fromYMD(startyear,1,1);
+var enddate = ee.Date.fromYMD(endyear,12,31);
+
+/// FUNÇÃO PARA GERAR A TEMPE MÉDIA 8 DIAS 
+
+function temp_mean_day(image){
+  
+  var mean = image.expression('(Td+Tn)/2',{
+    'Td': image.select('LST_Day_1km'),
+    'Tn': image.select('LST_Night_1km')}).rename('Tmean')
+     
+    return image.addBands(mean).multiply(0.02).subtract(273.15).clip(roi)
+                               .copyProperties(image, image.propertyNames())
+                                .set({date:image.date().format('yyyy-MM-dd')})
+  
+}
+
+var temperature= ee.ImageCollection("MODIS/061/MOD11A2")
+                                      .select(['LST_Night_1km',"LST_Day_1km"])
+                                      .filterDate(startdate,enddate)
+                                      .filterBounds(roi)
+                                      .map(temp_mean_day)
+  
+  print('Quantas imagens temperatura', temperature.size())
+
+
+/// TEMPERATURA MÉDIA MENSAL 
+ 
+var temp_med =  ee.ImageCollection.fromImages(
+    
+    years.map(function (y) { //função ano
+    return months.map(function(m) {//função mês aninhada em ano
+    //Defina a variável precipitação 
+      var tmed_month = temperature.filter(ee.Filter.calendarRange(y, y, 'year'))//Filtro de ano
+                    .filter(ee.Filter.calendarRange(m, m, 'month'))//Filtro de mês
+                    .mean() //acumulando os dados
+                    .clip(roi);//Recortando pela área de estudo
+                    
+      return tmed_month.set('year', y)//Encerrando a função mês
+              .set('month', m) //inserir Mês
+              .set('system:time_start', ee.Date.fromYMD(y, m, 1));//Definindo Data Ano.Mês e Dia
+                        
+    });
+  }).flatten() //empilha a coleção ano a ano, mês a mês
+              //Nivela coleções de coleções.
+);
+
+// GRÁFICO DA TEMP. MÉDIA MENSAL 
+var chartP = ui.Chart.image.seriesByRegion({
+    imageCollection:temp_med,//Coleção mensal 
+    regions: roi, 
+    reducer: ee.Reducer.mean(), 
+    band: 'Tmean', 
+    scale: 1200, 
+    xProperty: 'system:time_start', 
+    seriesProperty: 'NOME'})
+    .setOptions({
+      title: 'Temperatura de superfície média mensal',
+      hAxis: {title: 'Intervalo de tempo'},
+      vAxis: {title: 'Ts (ºC)'},
+      lineWidth: 1,
+      pointSize: 5,
+      pointShape: 'square',
+      series: {
+          0:  {pointShape: 'circle',color: 'red'},
+          1: { pointShape: 'triangle', rotation: 180, color: 'DeepSkyred'},
+          2: {pointShape: 'square' , color: 'Steelred'},
+           3: {pointShape: 'square' , color: 'Green'}
+          }}
+      )
+    .setChartType('ScatterChart');  
+
+print(chartP)
+
+/// TEMPERATURA MÉDIA ANUAL 
+
+var tmed_anual = ee.ImageCollection.fromImages(//Retorna a coleção de imagens contendo as imagens fornecidas.
+    years.map(function (year) {
+    
+    var anual = temperature.filter(ee.Filter.calendarRange(year, year, 'year'))
+        .mean() // acumula os dados anuais 
+        .clip(roi); //recorte para área de estudo
+    return anual
+        .set('year', year)
+        .set('system:time_start', ee.Date.fromYMD(year, 1, 1))//apenas para termos uma data
+        ;
+}));
+
+print('2 -temperature', temperature)
+
+
+var t_mean_anual = tmed_anual.select('Tmean')
+
+print(t_mean_anual)
+
+
+// GRÁFICO DA TEMP. MÉDIA ANUAL
+var chartP = ui.Chart.image.seriesByRegion({
+    imageCollection: t_mean_anual,//Coleção mensal 
+    regions: roi, 
+    reducer: ee.Reducer.mean(), 
+    band:'Tmean', 
+    scale: 1000, 
+    xProperty: 'system:time_start', 
+    seriesProperty: 'NOME'})
+    .setOptions({
+      title: ' Temperatura de superfície média anual',
+      hAxis: {title: 'Intervalo de tempo'},
+      vAxis: {title: 'Ts (ºC)'},
+      lineWidth: 1,
+      pointSize: 5,
+      pointShape: 'square',
+      series: {
+         0:  {pointShape: 'circle',color: 'red'},
+          1: { pointShape: 'triangle', rotation: 180, color: 'DeepSkyred'},
+          2: {pointShape: 'square' , color: 'Steelred'},
+           3: {pointShape: 'square' , color: 'Green'}
+          }}
+      )
+    .setChartType('ScatterChart');  
+
+print(chartP)
+
+
