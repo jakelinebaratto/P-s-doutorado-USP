@@ -1,0 +1,137 @@
+//// Script utilizado para desenvolvimento do Pós-Doutorado no Departamento de Geografia da USP
+/// Projeto desenvolvido pela Dr. Jakeline Baratto e financiado pela FAPESP (processo: 2022/02383-3)
+/// Este script foi desenvolvido para baixar dados de NDVI e EVI do Sensor MODIS (MODIS/061/MYD13Q10)
+//// para baixar os dados de NDVI ou EVI é só selecionar a banda desejada.
+
+
+/**************Variação do NDVI, EVI do manguezal e do SCCI **********************/
+
+// DEFINIÇÃO DA ÁREA DE ESTUDO 
+
+/// Manguezal 
+
+var roi = ee.FeatureCollection('users/jakelinebarattogeo/mangueSSI_WGS84_disso')
+
+/// SCCI 
+
+//var roi =ee.FeatureCollection('users/jakelinebarattogeo/SCCI');
+
+var startyear = 2003;
+var endyear = 2022;
+
+// CRIAR LISTA PARA VARIÁVEL YEARS
+var years = ee.List.sequence(startyear,endyear);
+ 
+// CRIAR LISTA DE MESES PARA UTILIZAR NAS FUNÇÕES 
+var months = ee.List.sequence(1,12);
+ 
+// DEFINIR INÍCIO E FIM 
+var startdate = ee.Date.fromYMD(startyear,1,1);
+var enddate = ee.Date.fromYMD(endyear,12,31);
+
+/************** NDVI do manguezal **********************/
+var ndvi = ee.ImageCollection("MODIS/061/MYD13Q1") 
+              .select("EVI")
+              .filterDate(startdate,enddate)
+              .filterBounds(roi)
+              
+ var fator = 0.0001
+
+function aplicarFator (imagem) {
+  return imagem.multiply(fator)
+  .copyProperties(imagem, imagem.propertyNames())
+}
+
+ndvi = ndvi.map(aplicarFator)
+
+print(ndvi)
+
+// CALCULO DO NDVI MENSAL -
+
+var ndvi_mensal_media =  ee.ImageCollection.fromImages( 
+    
+    years.map(function (y) { //função ano
+    return months.map(function(m) {//função mês aninhada em ano
+    //Defina a variável DNVI 
+      var ndvi_month = ndvi.filter(ee.Filter.calendarRange(y, y, 'year'))//Filtro de ano
+                    .filter(ee.Filter.calendarRange(m, m, 'month'))//Filtro de mês
+                    .mean() //acumulando os dados
+                    .clip(roi);//Recortando pela área de estudo
+                    
+      return ndvi_month.set('year', y)//Encerrando a função mês
+              .set('month', m) //inserir Mês
+              .set('system:time_start', ee.Date.fromYMD(y, m, 1));//Definindo Data Ano.Mês e Dia
+                        
+    });
+  }).flatten() //empilha a coleção ano a ano, mês a mês
+              //Nivela coleções de coleções.
+);
+
+
+/// gráfico da média do NDVI para o manguezal 
+
+var chartP = ui.Chart.image.seriesByRegion({
+    imageCollection: ndvi_mensal_media ,//Coleção mensal 
+    regions: roi, 
+    reducer: ee.Reducer.mean(), 
+    band: 'EVI', 
+    scale: 1000, 
+    xProperty: 'system:time_start', 
+    seriesProperty: 'NOME'})
+    .setOptions({
+      title: 'NDVI da área de manguezal',
+      hAxis: {title: 'Intervalo de tempo'},
+      vAxis: {title: 'NDVI'},
+      lineWidth: 1,
+      pointSize: 5,
+      pointShape: 'square',
+      series: {
+          0:  {pointShape: 'circle',color: 'blue'},
+          1: { pointShape: 'triangle', rotation: 180, color: 'DeepSkyBlue'},
+          2: {pointShape: 'square' , color: 'SteelBlue'},
+           3: {pointShape: 'square' , color: 'Green'}
+          }}
+      )
+    .setChartType('ScatterChart');  
+
+print(chartP)
+
+// CALCULO DO NDVI MENSAL -
+
+var ndvi_anual = ee.ImageCollection.fromImages(//Retorna a coleção de imagens contendo as imagens fornecidas.
+    years.map(function (year) {
+    
+    var anual = ndvi.filter(ee.Filter.calendarRange(year, year, 'year'))
+        .mean() // acumula os dados anuais 
+        .clip(roi); //recorte para área de estudo
+    return anual
+        .set('year', year)
+        .set('system:time_start', ee.Date.fromYMD(year, 1, 1))//apenas para termos uma data
+        ;
+}));
+
+var chartP = ui.Chart.image.seriesByRegion({
+    imageCollection: ndvi_anual ,//Coleção mensal 
+    regions: roi, 
+    reducer: ee.Reducer.mean(), 
+    band: 'EVI', 
+    scale: 1000, 
+    xProperty: 'system:time_start', 
+    seriesProperty: 'NOME'})
+    .setOptions({
+      title: 'NDVI da área de manguezal',
+      hAxis: {title: 'Intervalo de tempo'},
+      vAxis: {title: 'NDVI'},
+      lineWidth: 1,
+      pointSize: 5,
+      pointShape: 'square',
+      series: {
+          0:  {pointShape: 'circle',color: 'blue'},
+//          1: { pointShape: 'triangle', rotation: 180, color: 'DeepSkyBlue'},
+          2: {pointShape: 'square' , color: 'SteelBlue'},
+           3: {pointShape: 'square' , color: 'Green'}
+}}
+      )
+    .setChartType('ScatterChart');  
+
+print(chartP)
