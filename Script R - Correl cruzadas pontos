@@ -1,0 +1,93 @@
+#### Script utilizado para desenvolvimento do Pós-Doutorado no Departamento de Geografia da USP
+#### Projeto desenvolvido pela Dr. Jakeline Baratto e financiado pela FAPESP (processo: 2022/02383-3)
+#### Script utilizado para aplicar a correlação curzada entre os dados mensais da 
+###### da precipitação pluvial, temperatura de supefície e NDVI para os pontos amostrais dentro do manguezal do SCCI
+
+# Passo 1: Carregar os pacotes que serão usados
+if(!require(pacman)) install.packages("pacman")
+pacman::p_load(dplyr,ggplot2, car, rstatix,lmtest, ggpubr,psych, data.table, readxl, ggpmisc)
+
+if(!require(pacman)) install.packages("pacman")
+library(pacman)
+
+
+
+
+### Chamando o banco de dados 
+
+series <-  read.csv2(file.choose()) # Carregamento do arquivo csv
+View(series)                                 # Visualiza??o dos dados em janela separada
+glimpse(series) 
+
+
+
+### Gráficos
+## Análise gráfica:
+
+
+# Passo 6: Gráfico de dispersão
+### Gráfico TS e NDVI 
+
+GTS <- ggplot(data = series)+
+  geom_point(aes(x = NDVI, y = TS),
+             color = "dark grey", shape = 18, size = 2) +
+  geom_line(aes(x = NDVI, y = TS), stat = "smooth",  
+            method = "lm", color = "black", size = 0.5, linetype = "dashed") +
+  labs(y = "Temperatura Superfície(ºC)", x = "NDVI") +
+  scale_y_continuous(limits = c(0,30)) +
+  scale_x_continuous(limits = c(0,1)) + theme_classic()
+
+GTS
+
+## Modificando os limites dos eixos
+### coord_cartesian x scale_y_continuous
+
+Gts2 <- GTS + scale_x_continuous(breaks = seq(0,1,by = 0.10),
+                                expand = expansion(add = c(0.05,0.2))) + 
+  scale_y_continuous(breaks = seq(0,30,by = 5),
+                     expand = expansion(add = c(13,5)))
+Gts2
+
+# Construção do modelo:
+mod <- lm(TS ~ NDVI, series)
+
+summary(mod)
+
+## Correlação Linear de Pearson (coeficiente = r):
+cor.test(series$NDVI, series$TS, method = "pearson")
+cor.test(series$NDVI, series$TS, method = "spearman")
+
+
+
+### Gráfico  P e  NDVI 
+
+GTS <- ggplot(data = series)+
+  geom_point(aes(x = P, y = NDVI),
+             color = "dark grey", shape = 18, size = 2) +
+  geom_line(aes(x = P, y = NDVI), stat = "smooth",  
+            method = "lm", color = "black", size = 0.5, linetype = "dashed") +
+  labs(y = "NDVI", x = "Precipitação Pluvial (mm)") +
+  scale_y_continuous(limits = c(0,1)) +
+  scale_x_continuous(limits = c(0,800)) + theme_classic()
+
+GTS
+
+## Modificando os limites dos eixos
+### coord_cartesian x scale_y_continuous
+
+Gts <- GTS + scale_x_continuous(breaks = seq(0,800,by = 100),
+                                expand = expansion(add = c(0,450))) + 
+  scale_y_continuous(breaks = seq(0,1,by = 0.1),
+                     expand = expansion(add = c(0.05,0.2)))
+
+
+plot_grid(Gts2, Gts, ncol=2)
+
+# Construção do modelo:
+mod <- lm(NDVI ~ P, series)
+
+summary(mod)
+
+## Correlação Linear de Pearson (coeficiente = r):
+cor.test(series$P, series$NDVI, method = "pearson")
+cor.test(series$P, series$NDVI, method = "spearman")
