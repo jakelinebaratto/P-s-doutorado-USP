@@ -1,3 +1,12 @@
+###### Script utilizado para desenvolvimento do Pós-Doutorado no Departamento de Geografia da USP
+###### Projeto desenvolvido pela Dr. Jakeline Baratto e financiado pela FAPESP (processo: 2022/02383-3)
+###### Este Script desenvolvido gerar os gráficos de box plot dos índices de vegetação (LAI, NDVI e EVI) 
+##### do sensor MODIS para a área de manguezal no SCCI
+
+
+
+#### PAcotes utilizados
+
 library(ggplot2)
 library(dplyr)
 library(cowplot)
