@@ -2,7 +2,7 @@
 ###### Projeto desenvolvido pela Dr. Jakeline Baratto e financiado pela FAPESP (processo: 2022/02383-3)
 ###### Este Script desenvolvido para identificação dos eventos extremos de precipitação pluvial na escala de 1 mês, 3 meses e 12 meses. 
 
-
+#### pacotes utilizados
 library("SPEI")
 library("lmomco")
 library("ggplot2")
