@@ -1,0 +1,105 @@
+library(ggplot2)
+library(dplyr)
+library(cowplot)
+
+### Carregar dados 
+
+dados <- read.csv2(file.choose())
+dados
+
+#####Box plot NDVI
+
+NDVI <- ggplot(data = dados, aes(y= NDVI, x = mes ))+
+  geom_errorbar(stat = "boxplot", width = 0.2) +
+  geom_boxplot(width= 0.6, outlier.shape = 1, outlier.size = 2) +
+
+ 
+  labs(y = "NDVI",x= "Meses") +
+  
+  theme_classic() +
+  
+  scale_y_continuous(limits = c(0,1)) +
+  scale_y_continuous(expand = expansion(add = c(0.2,0.1)),  n.breaks = 7) +
+  
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr",
+                              "May", "Jun", "Jul", "Aug",
+                              "Sep", "Oct", "Nov", "Dec"), 
+                   labels = c("Jan", "Fev", "Mar", "Abr",
+                             "Maio", "Jun", "Jul", "Ago",
+                             "Set", "Out", "Nov", "Dez"))
+
+
+#####Box plot EVI
+
+EVI <- ggplot(data = dados, aes(y= Evi, x = mes ))+
+  geom_errorbar(stat = "boxplot", width = 0.2) +
+  geom_boxplot(width= 0.6, outlier.shape = 1, outlier.size = 2) +
+  
+  
+  labs(y = "EVI",x= "Meses") +
+  
+  theme_classic() +
+  
+  scale_y_continuous(limits = c(0,0)) +
+  scale_y_continuous(expand = expansion(add = c(0.1,0.4)),  n.breaks = 8) +
+  
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr",
+                              "May", "Jun", "Jul", "Aug",
+                              "Sep", "Oct", "Nov", "Dec"), 
+                   labels = c("Jan", "Fev", "Mar", "Abr",
+                              "Maio", "Jun", "Jul", "Ago",
+                              "Set", "Out", "Nov", "Dez"))
+
+#####Box plot IAF
+
+IAF <- ggplot(data = dados, aes(y= LAI, x = mes ))+
+  geom_errorbar(stat = "boxplot", width = 0.2) +
+  geom_boxplot(width= 0.6, outlier.shape = 1, outlier.size = 2) +
+  
+  
+  labs(y = "LAI (m²/m²)",x= "Meses") +
+  
+  theme_classic() +
+  
+  scale_y_continuous(limits = c(1,1)) +
+  scale_y_continuous(expand = expansion(add = c(1,1)),  n.breaks = 7) +
+  
+  scale_x_discrete(limits = c("Jan", "Feb", "Mar", "Apr",
+                              "May", "Jun", "Jul", "Aug",
+                              "Sep", "Oct", "Nov", "Dec"), 
+                   labels = c("Jan", "Fev", "Mar", "Abr",
+                              "Maio", "Jun", "Jul", "Ago",
+                              "Set", "Out", "Nov", "Dez"))
+plot_grid(NDVI,EVI,IAF, ncol=3)
+
+tabela <- dados %>% group_by(mes) %>% 
+  summarise(
+    média = mean(NDVI),
+    Mínimo = min(NDVI),
+    Máximo = max(NDVI),
+    Medina = median(NDVI),
+    p.25 = quantile(NDVI, probs = 0.25),
+    p.75 = quantile(NDVI, probs = 0.75),
+  )
+
+Tabala
+
+tabelaLAI <- dados %>% group_by(mes) %>% 
+  summarise(
+    média = mean(LAI,na.rm = TRUE),
+    Mínimo = min(LAI,na.rm = TRUE),
+    Máximo = max(LAI,na.rm = TRUE),
+    Medina = median(LAI,na.rm = TRUE),
+    p.25 = quantile(LAI,na.rm = TRUE, probs = 0.25),
+    p.75 = quantile(LAI,na.rm = TRUE, probs = 0.75),
+  )
+
+tabelaEvi <- dados %>% group_by(mes) %>% 
+  summarise(
+    média = mean(Evi),
+    Mínimo = min(Evi),
+    Máximo = max(Evi),
+    Medina = median(Evi),
+    p.25 = quantile(Evi, probs = 0.25),
+    p.75 = quantile(Evi, probs = 0.75),
+  )
